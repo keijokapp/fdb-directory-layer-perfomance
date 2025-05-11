@@ -1,4 +1,4 @@
-import fdb, random, threading, struct
+import fdb, random, struct, threading
 
 class AllocatorTransactionState:
     def __init__(self):

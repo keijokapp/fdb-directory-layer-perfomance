@@ -4,7 +4,6 @@ class AllocatorTransactionState:
     def __init__(self):
         self.lock = threading.Lock()
 
-
 class HighContentionAllocator(object):
     def __init__(self, subspace):
         self.counters = subspace[0]

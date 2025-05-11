@@ -5,23 +5,23 @@ fdb.api_version(730)
 import hca.original as originalHca
 import hca.new as newHca
 
-# import hca
-
 db = fdb.open()
 db.clear_range(b'', b'\xff')
 
 allocators = {
   'original': originalHca.HighContentionAllocator(fdb.Subspace(("a",))),
-  'modified': originalHca.HighContentionAllocator(fdb.Subspace(("a",))),
-  'new     ': newHca.HighContentionAllocator(fdb.Subspace(("b",)))
+  'modified': originalHca.HighContentionAllocator(fdb.Subspace(("b",))),
+  'new     ': newHca.HighContentionAllocator(fdb.Subspace(("c",)))
 }
 
-transaction_count = 5
-allocations_per_transaction = 5
+sample_count = 30
+transaction_count = 20
+allocations_per_transaction = 20
 
 results = { name: [] for name in allocators.keys() }
 
 def run(allocator):
+  db.clear_range(b'', b'\xff')
   result = set()
 
   @fdb.transactional
@@ -59,9 +59,11 @@ def run(allocator):
 
   return end - start
 
-for i in range(0, 11):
+for i in range(0, sample_count + 1):
   for name, allocator in allocators.items():
-    results[name].append(run(allocator))
+    result = run(allocator)
+    if (i > 1):
+      results[name].append(result)
 
 for name in allocators.keys():
   for result in results[name]:
