@@ -53,10 +53,20 @@ for i in range(0, 10):
   result = set()
   results.append(end - start)
 
-for i in range(1, len(results) // 2):
-    print("fdb: " + str(round((results[i * 2]) * 1000000) / 1000))
+fdb_results = [results[i * 2] for i in range(1, len(results) // 2)]
+new_results = [results[i * 2 + 1] for i in range(1, len(results) // 2)]
 
-for i in range(1, len(results) // 2):
-    print("new: " + str(round((results[i * 2 + 1]) * 1000000) / 1000))
+for result in fdb_results:
+    print("fdb: " + str(round(result * 1000000) / 1000))
 
-print("Done");
+print('')
+
+for result in new_results:
+    print("new: " + str(round(result * 1000000) / 1000))
+
+print('')
+
+print('fdb: ' + str(round(sum(fdb_results) / len(fdb_results) * 1000000 / 1000)))
+print('new: ' + str(round(sum(new_results) / len(new_results) * 1000000 / 1000)))
+
+print("Done")
