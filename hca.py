@@ -25,28 +25,27 @@ class HighContentionAllocator(object):
 
         tr_state = tr.__fdb_directory_layer_hca_state__
 
-        while True:
-            [start] = [
-                self.counters.unpack(k)[0]
-                for k, _ in tr.snapshot.get_range(
+        with tr_state.lock:
+            [(start, count)] = [
+                (self.counters.unpack(k)[0], struct.unpack("<q", bytes(c))[0])
+                for k, c in tr.snapshot.get_range(
                     self.counters.range().start,
                     self.counters.range().stop,
                     limit=1,
                     reverse=True,
                 )
-            ] or [0]
+            ] or [(0, 0)]
 
             window_advanced = False
             while True:
-                with tr_state.lock:
-                    if window_advanced:
-                        del tr[self.counters : self.counters[start]]
-                        tr.options.set_next_write_no_write_conflict_range()
-                        del tr[self.recent : self.recent[start]]
+                if window_advanced:
+                    del tr[self.counters : self.counters[start]]
+                    tr.options.set_next_write_no_write_conflict_range()
+                    del tr[self.recent : self.recent[start]]
 
-                    # Increment the allocation count for the current window
-                    tr.add(self.counters[start], struct.pack("<q", 1))
-                    count = tr.snapshot[self.counters[start]]
+                # Increment the allocation count for the current window
+                tr.add(self.counters[start], struct.pack("<q", 1))
+                count = tr.snapshot[self.counters[start]]
 
                 if count != None:
                     count = struct.unpack("<q", bytes(count))[0]
@@ -67,16 +66,15 @@ class HighContentionAllocator(object):
                 # subsequent risk of conflict for this transaction.
                 candidate = random.randrange(start, start + window)
 
-                with tr_state.lock:
-                    latest_counter = tr.snapshot.get_range(
-                        self.counters.range().start,
-                        self.counters.range().stop,
-                        limit=1,
-                        reverse=True,
-                    )
-                    candidate_value = tr[self.recent[candidate]]
-                    tr.options.set_next_write_no_write_conflict_range()
-                    tr[self.recent[candidate]] = b""
+                latest_counter = tr.snapshot.get_range(
+                    self.counters.range().start,
+                    self.counters.range().stop,
+                    limit=1,
+                    reverse=True,
+                )
+                candidate_value = tr[self.recent[candidate]]
+                tr.options.set_next_write_no_write_conflict_range()
+                tr[self.recent[candidate]] = b""
 
                 latest_counter = [self.counters.unpack(k)[0] for k, _ in latest_counter]
                 if len(latest_counter) > 0 and latest_counter[0] > start:
