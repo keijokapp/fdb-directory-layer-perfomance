@@ -1,20 +1,26 @@
 
-import fdb, threading, time, hca
+import fdb, threading, time
 
 fdb.api_version(730)
+
+import hca
+
 db = fdb.open()
 db.clear_range(b'', b'\xff')
 
-fdb_allocator = fdb.HighContentionAllocator(fdb.Subspace(("b",)))
-new_allocator = hca.HighContentionAllocator(fdb.Subspace(("a",)))
+allocators = {
+  'fdb': fdb.HighContentionAllocator(fdb.Subspace(("a",))),
+  'new': hca.HighContentionAllocator(fdb.Subspace(("b",)))
+}
 
-transaction_count = 40
-allocations_per_transaction = 30
-result = set()
+transaction_count = 5
+allocations_per_transaction = 5
 
-results = []
+results = { name: [] for name in allocators.keys() }
 
-def run_thread(allocator):
+def run(allocator):
+  result = set()
+
   @fdb.transactional
   def run_transaction(tr):
     transaction_result = []
@@ -30,15 +36,13 @@ def run_thread(allocator):
 
     return transaction_result
 
-  for transaction_result in run_transaction(db):
-    result.add(transaction_result)
+  def run_thread():
+    for transaction_result in run_transaction(db):
+      result.add(transaction_result)
 
-for i in range(0, 20):
+  threads = [threading.Thread(target=run_thread) for _ in range(0, transaction_count)]
+
   start = time.time()
-
-  allocator = new_allocator if i % 2 else fdb_allocator
-
-  threads = [threading.Thread(target=run_thread, args=(allocator,)) for _ in range(0, transaction_count)]
 
   for thread in threads:
     thread.start()
@@ -48,28 +52,20 @@ for i in range(0, 20):
 
   end = time.time()
 
-  if (len(result) != transaction_count * allocations_per_transaction):
-    print(result)
-    print(len(result))
-
   assert(len(result) == transaction_count * allocations_per_transaction)
-  result = set()
-  results.append(end - start)
 
-fdb_results = [results[i * 2] for i in range(1, len(results) // 2)]
-new_results = [results[i * 2 + 1] for i in range(1, len(results) // 2)]
+  return end - start
 
-for result in fdb_results:
-    print("fdb: " + str(round(result * 1000000) / 1000))
+for i in range(0, 11):
+  for name, allocator in allocators.items():
+    results[name].append(run(allocator))
 
-print('')
+for name in allocators.keys():
+  for result in results[name]:
+      print(f"${name}: " + str(round(result * 1000000) / 1000))
+  print('')
 
-for result in new_results:
-    print("new: " + str(round(result * 1000000) / 1000))
-
-print('')
-
-print('fdb: ' + str(round(sum(fdb_results) / len(fdb_results) * 1000000 / 1000)))
-print('new: ' + str(round(sum(new_results) / len(new_results) * 1000000 / 1000)))
+for name in allocators.keys():
+  print(f'{name}: {str(round(sum(results[name]) / len(results[name]) * 1000000 / 1000))}')
 
 print("Done")

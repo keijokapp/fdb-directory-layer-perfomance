@@ -10,6 +10,7 @@ class HighContentionAllocator(object):
         self.recent = subspace[1]
         self.lock = threading.Lock()
 
+    @fdb.transactional
     def allocate(self, tr):
         """Returns a byte string that
         1) has never and will never be returned by another call to this
@@ -38,6 +39,11 @@ class HighContentionAllocator(object):
 
             window_advanced = False
             while True:
+                if window_advanced:
+                    del tr[self.counters : self.counters[start]]
+                    tr.options.set_next_write_no_write_conflict_range()
+                    del tr[self.recent : self.recent[start]]
+
                 # Increment the allocation count for the current window
                 tr.add(self.counters[start], struct.pack("<q", 1))
                 count = count + 1
@@ -50,11 +56,6 @@ class HighContentionAllocator(object):
                 start += window
                 window_advanced = True
 
-            if window_advanced:
-                del tr[self.counters : self.counters[start]]
-                tr.options.set_next_write_no_write_conflict_range()
-                del tr[self.recent : self.recent[start]]
-
             while True:
                 # As of the snapshot being read from, the window is less than half
                 # full, so this should be expected to take 2 tries.  Under high
@@ -62,10 +63,22 @@ class HighContentionAllocator(object):
                 # subsequent risk of conflict for this transaction.
                 candidate = random.randrange(start, start + window)
 
+                latest_counter = tr.snapshot.get_range(
+                    self.counters.range().start,
+                    self.counters.range().stop,
+                    limit=1,
+                    reverse=True,
+                )
                 candidate_value = tr[self.recent[candidate]]
+                tr.options.set_next_write_no_write_conflict_range()
+                tr[self.recent[candidate]] = b""
+
+                latest_counter = [self.counters.unpack(k)[0] for k, _ in latest_counter]
+                if len(latest_counter) > 0 and latest_counter[0] > start:
+                    break
 
                 if candidate_value == None:
-                    tr[self.recent[candidate]] = b""
+                    tr.add_write_conflict_key(self.recent[candidate])
                     return fdb.tuple.pack((candidate,))
 
     def _window_size(self, start):
