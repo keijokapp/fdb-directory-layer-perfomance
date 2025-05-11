@@ -11,8 +11,9 @@ db = fdb.open()
 db.clear_range(b'', b'\xff')
 
 allocators = {
-  'fdb': originalHca.HighContentionAllocator(fdb.Subspace(("a",))),
-  'new': newHca.HighContentionAllocator(fdb.Subspace(("b",)))
+  'original': originalHca.HighContentionAllocator(fdb.Subspace(("a",))),
+  'modified': originalHca.HighContentionAllocator(fdb.Subspace(("a",))),
+  'new     ': newHca.HighContentionAllocator(fdb.Subspace(("b",)))
 }
 
 transaction_count = 5
