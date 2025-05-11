@@ -1,16 +1,20 @@
 
 import fdb, threading, time
+fdb.api_version(730)
+
+import hca.original as originalHca
+import hca.new as newHca
 
 fdb.api_version(730)
 
-import hca
+# import hca
 
 db = fdb.open()
 db.clear_range(b'', b'\xff')
 
 allocators = {
-  'fdb': fdb.HighContentionAllocator(fdb.Subspace(("a",))),
-  'new': hca.HighContentionAllocator(fdb.Subspace(("b",)))
+  'fdb': originalHca.HighContentionAllocator(fdb.Subspace(("a",))),
+  'new': newHca.HighContentionAllocator(fdb.Subspace(("b",)))
 }
 
 transaction_count = 5
