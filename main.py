@@ -5,8 +5,6 @@ fdb.api_version(730)
 import hca.original as originalHca
 import hca.new as newHca
 
-fdb.api_version(730)
-
 # import hca
 
 db = fdb.open()
@@ -70,6 +68,6 @@ for name in allocators.keys():
   print('')
 
 for name in allocators.keys():
-  print(f'{name}: {str(round(sum(results[name]) / len(results[name]) * 1000000 / 1000))}')
+  print(f'{name}: {str(round(sum(results[name]) * 1000000) / 1000)}')
 
 print("Done")
