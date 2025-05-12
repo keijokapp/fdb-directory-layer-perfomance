@@ -20,9 +20,9 @@ allocators = {
 # sample_count = 25
 # transaction_count = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30]
 # allocation_count = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30]
-sample_count = 1
-transaction_count = [1, 3, 9, 17]
-allocation_count = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+sample_count = 5
+transaction_count = [1, 3, 7, 17, 31]
+allocation_count = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 
 def run(allocator, transaction_count, allocation_count):
   db.clear_range(b'', b'\xff')
@@ -109,7 +109,7 @@ for i, name in enumerate(allocators.keys()):
 
 data = [[c - d for c, d in zip(a, b)] for a, b in zip(plot_data['original'], plot_data['new'])]
 ax = axs[len(allocators)]
-im = ax.imshow(data, origin='lower', extent=(min(transaction_count) - 0.5, max(transaction_count) + 0.5, min(allocation_count) - 0.5, max(allocation_count) + 0.5), cmap=LinearSegmentedColormap.from_list('RedGreen', ['red', 'green']))
+im = ax.imshow(data, origin='lower', vmin=-0.09, vmax=0.09, extent=(min(transaction_count) - 0.5, max(transaction_count) + 0.5, min(allocation_count) - 0.5, max(allocation_count) + 0.5), cmap=LinearSegmentedColormap.from_list('RedGreen', ['red', 'green']))
 ax.set_xlabel('Transaction count')
 ax.set_ylabel('Allocation count per transaction')
 plt.colorbar(im, label="diff in seconds", ax=ax)
